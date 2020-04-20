@@ -2,9 +2,15 @@ const uuid = require('uuid/v4')
 const { ContentState, EditorState } = require('draft-js')
 const Immutable = require('immutable')
 
+const { editorChangeTypes, commitTypes, TAG } = require('./constants')
+
+function getBlockTag(block) {
+    return block.getData().get(TAG)
+}
+
 function reconcileTags(previousBlockMap, currentBlockMap) {
     return previousBlockMap.valueSeq().map(block => {
-        const isTagged = block.getData().has('tag')
+        const isTagged = getBlockTag(block)
 
         if (isTagged) return block
 
@@ -13,9 +19,7 @@ function reconcileTags(previousBlockMap, currentBlockMap) {
 
         if (!currentBlock) return block
 
-        const newBlockData = block
-            .getData()
-            .set('tag', currentBlock.getData().get('tag'))
+        const newBlockData = block.getData().set(TAG, getBlockTag(currentBlock))
         return isTagged ? block : block.set('data', newBlockData)
     })
 }
@@ -23,12 +27,12 @@ function reconcileTags(previousBlockMap, currentBlockMap) {
 function processBlockDeletion(previousBlocks, currentBlocks) {
     const deletedBlocks = previousBlocks
         .valueSeq()
-        .filter(block => !currentBlocks.has(block.getData().get('tag')))
+        .filter(block => !currentBlocks.has(getBlockTag(block)))
 
     return deletedBlocks
         .map(block => ({
-            type: 'delete',
-            tag: block.getData().get('tag'),
+            type: commitTypes.DELETE,
+            tag: getBlockTag(block),
         }))
         .toJS()
 }
@@ -36,12 +40,12 @@ function processBlockDeletion(previousBlocks, currentBlocks) {
 function processBlockCreation(previousBlocks, currentBlocks) {
     const addedBlocks = currentBlocks
         .valueSeq()
-        .filter(block => !previousBlocks.has(block.getData().get('tag')))
+        .filter(block => !previousBlocks.has(getBlockTag(block)))
 
     return addedBlocks
         .map(block => ({
-            type: 'add',
-            tag: block.getData().get('tag'),
+            type: commitTypes.ADD,
+            tag: getBlockTag(block),
             text: block.getText(),
         }))
         .toJS()
@@ -49,7 +53,7 @@ function processBlockCreation(previousBlocks, currentBlocks) {
 
 function processBlockEdit(previousBlocks, currentBlocks) {
     const editedBlocks = currentBlocks.valueSeq().filter(block => {
-        const currentTag = block.getData().get('tag')
+        const currentTag = getBlockTag(block)
         const blockBefore = previousBlocks.get(currentTag)
         if (!currentTag || !blockBefore) return false
 
@@ -60,8 +64,8 @@ function processBlockEdit(previousBlocks, currentBlocks) {
 
     return editedBlocks
         .map(block => ({
-            type: 'edit',
-            tag: block.getData().get('tag'),
+            type: commitTypes.EDIT,
+            tag: getBlockTag(block),
             text: block.getText(),
         }))
         .toJS()
@@ -82,13 +86,16 @@ function deriveChangesFromStates(previous, actual) {
         : new Immutable.Map()
     const hasLessBlocks = previousBlocks.size > currentBlocks.size
     if (
-        changeType === 'insert-characters' ||
-        (changeType === 'backspace-character' && !hasLessBlocks)
+        changeType === editorChangeTypes.INSERT_CHARACTERS ||
+        (changeType === editorChangeTypes.BACKSPACE_CHARACTER && !hasLessBlocks)
     ) {
         return processBlockEdit(previousBlocks, currentBlocks)
-    } else if (changeType === 'split-block') {
+    } else if (changeType === editorChangeTypes.SPLIT_BLOCK) {
         return processBlockCreation(previousBlocks, currentBlocks)
-    } else if (changeType === 'backspace-character' && hasLessBlocks) {
+    } else if (
+        changeType === editorChangeTypes.BACKSPACE_CHARACTER &&
+        hasLessBlocks
+    ) {
         return processBlockDeletion(previousBlocks, currentBlocks)
     }
 
@@ -104,8 +111,8 @@ function tagUntaggedBlocks(editorState) {
     const blockList = contentState.getBlockMap().valueSeq()
 
     const taggedBlockList = blockList.map(block => {
-        const isTagged = block.getData().has('tag')
-        const newBlockData = block.getData().set('tag', uuid())
+        const isTagged = getBlockTag(block)
+        const newBlockData = block.getData().set(TAG, uuid())
         return isTagged ? block : block.set('data', newBlockData)
     })
 
@@ -118,7 +125,7 @@ function tagUntaggedBlocks(editorState) {
 
 function getBlockMapByTag(blocks) {
     return blocks.reduce((blockTagMap, block) => {
-        const tag = block.getData().get('tag')
+        const tag = getBlockTag(block)
         if (!tag || !block) return blockTagMap
         return blockTagMap.set(tag, block)
     }, new Immutable.Map())
