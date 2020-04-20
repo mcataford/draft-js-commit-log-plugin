@@ -51,7 +51,6 @@ function processBlockEdit(previousBlocks, currentBlocks) {
     const editedBlocks = currentBlocks.valueSeq().filter(block => {
         const currentTag = block.getData().get('tag')
         const blockBefore = previousBlocks.get(currentTag)
-
         if (!currentTag || !blockBefore) return false
 
         const isTextDifferent = block.getText() !== blockBefore.getText()
@@ -81,9 +80,7 @@ function deriveChangesFromStates(previous, actual) {
               ).toList(),
           )
         : new Immutable.Map()
-
     const hasLessBlocks = previousBlocks.size > currentBlocks.size
-
     if (
         changeType === 'insert-characters' ||
         (changeType === 'backspace-character' && !hasLessBlocks)
@@ -94,6 +91,10 @@ function deriveChangesFromStates(previous, actual) {
     } else if (changeType === 'backspace-character' && hasLessBlocks) {
         return processBlockDeletion(previousBlocks, currentBlocks)
     }
+
+    // TODO: Clear up initial block creation.
+    if (previousBlocks.size === 0)
+        return processBlockCreation(previousBlocks, currentBlocks)
 
     return []
 }
