@@ -6,7 +6,10 @@
   "repository": "git@github.com:mcataford/draft-js-commit-log-plugin.git",
   "author": "Marc Cataford <c.marcandre@gmail.com>",
   "license": "MIT",
-  "files": ["src/*.js", "!*.test.js"],
+  "files": [
+    "src/*.js",
+    "!*.test.js"
+  ],
   "scripts": {
     "lint": "eslint ./src",
     "test": "jest ./src"
@@ -30,6 +33,7 @@
     "react-dom": "^16.13.1"
   },
   "dependencies": {
+    "immutable": "^4.0.0-rc.12",
     "uuid": "^7.0.3"
   }
 }
