@@ -2,15 +2,12 @@ const { deriveChangesFromStates, tagUntaggedBlocks } = require('./utils')
 
 const createCommitLogPlugin = () => {
     const pluginState = {
-        getProps: () => {},
         commits: [],
         previousState: null,
         changeIndex: 0,
     }
 
-    const initialize = ({ getProps }) => {
-        pluginState.getProps = getProps
-    }
+    const initialize = () => {}
 
     const updatePluginState = ({ newCommits, previousState }) => {
         pluginState.commits = pluginState.commits.concat(newCommits)
@@ -37,6 +34,7 @@ const createCommitLogPlugin = () => {
         initialize,
         onChange,
         getCommitLog,
+        pluginState,
     }
 }
 
